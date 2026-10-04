@@ -13,7 +13,6 @@ import torch
 from gymnasium.envs.registration import register
 
 from envgen import generate_environment
-from run_ddpg import Actor
 from run_saved_agent import discover_agents, run_agent
 
 GENERATED_ENV_MAX_STEPS = 200
@@ -27,7 +26,18 @@ def find_checkpoint(env_id, seed, exp_name):
     return candidates[-1] if candidates else None
 
 
-def train(env_id, seed, total_timesteps, learning_starts, exp_name, reuse_existing=False):
+def train(
+    env_id,
+    seed,
+    total_timesteps,
+    learning_starts,
+    exp_name,
+    algorithm="ddpg",
+    reuse_existing=False,
+):
+    if algorithm not in {"ddpg", "sac", "ppo"}:
+        raise ValueError(f"Unsupported algorithm: {algorithm}")
+
     if reuse_existing:
         checkpoint = find_checkpoint(env_id, seed, exp_name)
         if checkpoint is not None:
@@ -36,7 +46,7 @@ def train(env_id, seed, total_timesteps, learning_starts, exp_name, reuse_existi
 
     command = [
         sys.executable,
-        "run_ddpg.py",
+        f"run_{algorithm}.py",
         "--env-id",
         env_id,
         "--seed",
@@ -70,12 +80,35 @@ def evaluate_random(env_id, episodes, seed):
     return returns
 
 
-def evaluate_learned(env_id, checkpoint, episodes, seed, cuda):
+def evaluate_learned(env_id, checkpoint, episodes, seed, cuda, algorithm="ddpg"):
     device = torch.device("cuda" if torch.cuda.is_available() and cuda else "cpu")
-    actor_env = gym.vector.SyncVectorEnv([lambda: gym.make(env_id)])
-    actor = Actor(actor_env).to(device)
-    actor.load_state_dict(torch.load(checkpoint, map_location=device, weights_only=False)[0])
-    actor.eval()
+    if algorithm == "ddpg":
+        from run_ddpg import Actor
+
+        actor_env = gym.vector.SyncVectorEnv([lambda: gym.make(env_id)])
+        actor = Actor(actor_env).to(device)
+        actor.load_state_dict(torch.load(checkpoint, map_location=device, weights_only=False)[0])
+        actor.eval()
+    elif algorithm == "sac":
+        from run_sac import Actor
+
+        actor_env = gym.vector.SyncVectorEnv([lambda: gym.make(env_id)])
+        actor = Actor(actor_env).to(device)
+        actor.load_state_dict(torch.load(checkpoint, map_location=device, weights_only=False)[0])
+        actor.eval()
+    elif algorithm == "ppo":
+        from run_ppo import Agent
+
+        actor_env = gym.vector.SyncVectorEnv([lambda: gym.make(env_id)])
+        if not isinstance(actor_env.single_action_space, gym.spaces.Discrete):
+            actor_env.close()
+            raise ValueError("PPO evaluation requires a discrete action space")
+        actor = Agent(actor_env).to(device)
+        actor.load_state_dict(torch.load(checkpoint, map_location=device, weights_only=False)[0])
+        actor.eval()
+    else:
+        raise ValueError(f"Unsupported algorithm: {algorithm}")
+
     returns = []
     for episode in range(episodes):
         env = gym.make(env_id)
@@ -84,8 +117,17 @@ def evaluate_learned(env_id, checkpoint, episodes, seed, cuda):
         terminated = truncated = False
         while not (terminated or truncated):
             with torch.no_grad():
-                action = actor(torch.as_tensor(observation, dtype=torch.float32, device=device).unsqueeze(0))
-            action = action.squeeze(0).cpu().numpy()
+                observation_tensor = torch.as_tensor(
+                    observation, dtype=torch.float32, device=device
+                ).unsqueeze(0)
+                if algorithm == "ppo":
+                    action = actor.get_action_and_value(observation_tensor)[0]
+                    action = action.squeeze(0).cpu().numpy()
+                elif algorithm == "sac":
+                    _, _, action = actor.get_action(observation_tensor)
+                    action = action.squeeze(0).cpu().numpy()
+                else:
+                    action = actor(observation_tensor).squeeze(0).cpu().numpy()
             observation, reward, terminated, truncated, _ = env.step(action)
             episode_return += float(reward)
         returns.append(episode_return)
@@ -150,6 +192,7 @@ def main():
     parser.add_argument("--episodes", type=int, default=5)
     parser.add_argument("--iterations", type=int, default=1)
     parser.add_argument("--seed", type=int, default=1)
+    parser.add_argument("--algorithm", choices=("ddpg", "sac", "ppo"), default="ddpg")
     parser.add_argument("--cuda", action=argparse.BooleanOptionalAction, default=True)
     parser.add_argument("--learned-titles-file", default="runs/learned_titles.txt")
     parser.add_argument(
@@ -174,10 +217,18 @@ def main():
             args.total_timesteps,
             args.learning_starts,
             exp_name,
+            algorithm=args.algorithm,
             reuse_existing=iteration == 0,
         )
         random_returns = evaluate_random(env_id, args.episodes, args.seed + iteration)
-        learned_returns = evaluate_learned(env_id, checkpoint, args.episodes, args.seed + iteration, args.cuda)
+        learned_returns = evaluate_learned(
+            env_id,
+            checkpoint,
+            args.episodes,
+            args.seed + iteration,
+            args.cuda,
+            algorithm=args.algorithm,
+        )
         report = summarize(random_returns, learned_returns)
         report.update({"env_id": env_id, "checkpoint": checkpoint})
         reports.append(report)
@@ -196,7 +247,7 @@ def main():
         json.dump(reports, results_file, indent=2)
     print("Pipeline results saved to runs/pipeline_results.json")
 
-    if args.generate_videos:
+    if args.generate_videos and args.algorithm == "ddpg":
         device = torch.device("cuda" if torch.cuda.is_available() and args.cuda else "cpu")
         agents = discover_agents("runs")
         for video_env_id, checkpoint_path in agents:
@@ -209,6 +260,8 @@ def main():
                 device,
             )
         print(f"Videos saved in {args.video_folder} for {len(agents)} environment(s)")
+    elif args.generate_videos:
+        print(f"Video generation is not supported for the {args.algorithm.upper()} checkpoint format")
 
 
 if __name__ == "__main__":

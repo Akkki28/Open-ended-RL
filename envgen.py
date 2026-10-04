@@ -2,6 +2,8 @@ import os
 import json
 import ast
 import hashlib
+import importlib.util
+import inspect
 import re
 import math
 
@@ -249,6 +251,7 @@ GROQ_TPM_LIMIT = 8_000
 GROQ_REQUEST_SAFETY_MARGIN = 200
 MAX_COMPLETION_TOKENS = 4_500
 MIN_COMPLETION_TOKENS = 3_000
+MAX_GENERATION_ATTEMPTS = 3
 
 
 def _estimate_token_count(*parts):
@@ -269,6 +272,43 @@ def _completion_token_budget(system_content, user_content):
             f"(estimated prompt size: {prompt_tokens} tokens)"
         )
     return min(MAX_COMPLETION_TOKENS, available_tokens)
+
+
+def _check_generated_environment(module_path):
+    """Validate a generated module with Gymnasium's environment checker."""
+    import gymnasium as gym
+    from gymnasium.utils.env_checker import check_env
+
+    module_name = f"_generated_environment_{hashlib.sha1(module_path.encode()).hexdigest()}"
+    module_spec = importlib.util.spec_from_file_location(module_name, module_path)
+    if module_spec is None or module_spec.loader is None:
+        raise RuntimeError(f"Unable to load generated environment module: {module_path}")
+
+    module = importlib.util.module_from_spec(module_spec)
+    try:
+        module_spec.loader.exec_module(module)
+        environment_classes = [
+            item
+            for _, item in inspect.getmembers(module, inspect.isclass)
+            if issubclass(item, gym.Env)
+            and item is not gym.Env
+            and item.__module__ == module.__name__
+        ]
+        if len(environment_classes) != 1:
+            raise RuntimeError(
+                f"Expected exactly one generated Env class in {module_path}, "
+                f"found {len(environment_classes)}"
+            )
+
+        environment = environment_classes[0]()
+        try:
+            check_env(environment, warn=True, skip_render_check=True)
+        finally:
+            environment.close()
+    except Exception as error:
+        raise RuntimeError(
+            f"Generated environment failed Gymnasium's check_env: {module_path}"
+        ) from error
 
 
 # Track previously generated and learned environment concepts.
@@ -307,62 +347,93 @@ increment it, and return truncated=True when the counter reaches 200 unless the
 episode has already terminated. Keep the truncation logic inside the environment
 as a defensive fallback; the runner also applies Gymnasium's TimeLimit wrapper.
 """
-    completion_token_budget = _completion_token_budget(system_prompt, user_prompt)
-
     client = Groq(api_key=os.environ["GROQ_API_KEY"])
-    response = client.chat.completions.create(
-        model="openai/gpt-oss-120b",
-        max_completion_tokens=completion_token_budget,
-        messages=[
-            {"role": "system", "content": system_prompt},
-            {"role": "user", "content": user_prompt},
-        ],
-        response_format={"type": "json_object"},
-    )
+    validation_feedback = ""
+    last_error = None
 
-    result = json.loads(response.choices[0].message.content or "{}")
-    title = result.get("task", "generated_environment")
-    code_to_run = result.get("code", "")
-    code_to_run = re.sub(r"^```(?:python)?\s*|\s*```$", "", code_to_run.strip())
-    if not code_to_run:
-        raise RuntimeError("Groq returned no environment code")
-    module_tree = ast.parse(code_to_run)
-    environment_classes = [
-        node
-        for node in module_tree.body
-        if isinstance(node, ast.ClassDef)
-        and any(
-            isinstance(base, ast.Attribute) and base.attr == "Env"
-            for base in node.bases
-        )
-    ]
-    required_methods = {"reset", "step", "render", "close"}
-    if not environment_classes:
-        raise RuntimeError("Groq returned code without a gymnasium.Env class")
-    method_names = {
-        node.name
-        for node in environment_classes[0].body
-        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))
-    }
-    missing_methods = required_methods - method_names
-    if missing_methods:
-        raise RuntimeError(
-            "Groq returned an incomplete environment; missing methods: "
-            + ", ".join(sorted(missing_methods))
+    for attempt in range(1, MAX_GENERATION_ATTEMPTS + 1):
+        attempt_prompt = user_prompt
+        if validation_feedback:
+            attempt_prompt += f"""
+
+The previous generated environment failed validation. Fix this error in the
+replacement module and return the complete JSON response again:
+{validation_feedback}
+"""
+        completion_token_budget = _completion_token_budget(
+            system_prompt, attempt_prompt
         )
 
-    module_name = re.sub(r"[^a-z0-9]+", "_", title.lower()).strip("_")
-    module_name = module_name or "generated_environment"
-    if len(module_name) > 80:
-        title_hash = hashlib.sha1(title.encode("utf-8")).hexdigest()[:10]
-        module_name = f"{module_name[:69].rstrip('_')}_{title_hash}"
-    module_path = os.path.join(output_dir, f"{module_name}.py")
-    with open(module_path, "w", encoding="utf-8") as environment_file:
-        environment_file.write(code_to_run.rstrip() + "\n")
+        response = client.chat.completions.create(
+            model="openai/gpt-oss-120b",
+            max_completion_tokens=completion_token_budget,
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": attempt_prompt},
+            ],
+            response_format={"type": "json_object"},
+        )
 
-    return {
-        "title": title,
-        "reasoning": result.get("reasoning", ""),
-        "module_name": module_name,
-        "module_path": module_path,
-    }
+        try:
+            result = json.loads(response.choices[0].message.content or "{}")
+            title = result.get("task", "generated_environment")
+            code_to_run = result.get("code", "")
+            code_to_run = re.sub(
+                r"^```(?:python)?\s*|\s*```$", "", code_to_run.strip()
+            )
+            if not code_to_run:
+                raise RuntimeError("Groq returned no environment code")
+
+            module_tree = ast.parse(code_to_run)
+            environment_classes = [
+                node
+                for node in module_tree.body
+                if isinstance(node, ast.ClassDef)
+                and any(
+                    isinstance(base, ast.Attribute) and base.attr == "Env"
+                    for base in node.bases
+                )
+            ]
+            required_methods = {"reset", "step", "render", "close"}
+            if not environment_classes:
+                raise RuntimeError("Groq returned code without a gymnasium.Env class")
+            method_names = {
+                node.name
+                for node in environment_classes[0].body
+                if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))
+            }
+            missing_methods = required_methods - method_names
+            if missing_methods:
+                raise RuntimeError(
+                    "Groq returned an incomplete environment; missing methods: "
+                    + ", ".join(sorted(missing_methods))
+                )
+
+            module_name = re.sub(r"[^a-z0-9]+", "_", title.lower()).strip("_")
+            module_name = module_name or "generated_environment"
+            if len(module_name) > 80:
+                title_hash = hashlib.sha1(title.encode("utf-8")).hexdigest()[:10]
+                module_name = f"{module_name[:69].rstrip('_')}_{title_hash}"
+            module_path = os.path.join(output_dir, f"{module_name}.py")
+            with open(module_path, "w", encoding="utf-8") as environment_file:
+                environment_file.write(code_to_run.rstrip() + "\n")
+
+            _check_generated_environment(module_path)
+        except Exception as error:
+            last_error = error
+            validation_feedback = str(error)
+            if attempt < MAX_GENERATION_ATTEMPTS:
+                continue
+            raise RuntimeError(
+                "Generated environment failed validation after "
+                f"{MAX_GENERATION_ATTEMPTS} attempts: {error}"
+            ) from error
+
+        return {
+            "title": title,
+            "reasoning": result.get("reasoning", ""),
+            "module_name": module_name,
+            "module_path": module_path,
+        }
+
+    raise RuntimeError("Environment generation failed") from last_error
