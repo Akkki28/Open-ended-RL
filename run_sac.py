@@ -12,7 +12,6 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
 import tyro
-from torch.utils.tensorboard import SummaryWriter
 
 from buffers import ReplayBuffer
 from run_ddpg import register_saved_generated_environments, save_reward_plot
@@ -28,12 +27,6 @@ class Args:
     """if toggled, `torch.backends.cudnn.deterministic=False`"""
     cuda: bool = True
     """if toggled, cuda will be enabled by default"""
-    track: bool = False
-    """if toggled, this experiment will be tracked with Weights and Biases"""
-    wandb_project_name: str = "cleanRL"
-    """the wandb's project name"""
-    wandb_entity: str = None
-    """the entity (team) of wandb's project"""
     capture_video: bool = False
     """whether to capture videos of the agent performances (check out `videos` folder)"""
 
@@ -161,24 +154,6 @@ if __name__ == "__main__":
     best_actor_state = None
     best_qf_state = None
     best_return = float("-inf")
-    if args.track:
-        import wandb
-
-        wandb.init(
-            project=args.wandb_project_name,
-            entity=args.wandb_entity,
-            sync_tensorboard=True,
-            config=vars(args),
-            name=run_name,
-            monitor_gym=True,
-            save_code=True,
-        )
-    writer = SummaryWriter(f"runs/{run_name}")
-    writer.add_text(
-        "hyperparameters",
-        "|param|value|\n|-|-|\n%s" % ("\n".join([f"|{key}|{value}|" for key, value in vars(args).items()])),
-    )
-
     # TRY NOT TO MODIFY: seeding
     random.seed(args.seed)
     np.random.seed(args.seed)
@@ -225,6 +200,7 @@ if __name__ == "__main__":
         handle_timeout_termination=False,
     )
     start_time = time.time()
+    print(f"Starting {run_name} on {device} for {args.total_timesteps} timesteps")
 
     # TRY NOT TO MODIFY: start the game
     obs, _ = envs.reset(seed=args.seed)
@@ -240,19 +216,30 @@ if __name__ == "__main__":
         next_obs, rewards, terminations, truncations, infos = envs.step(actions)
 
         # TRY NOT TO MODIFY: record rewards for plotting purposes
-        if "final_info" in infos:
-            for info in infos["final_info"]:
-                if info is not None:
-                    episode_return = float(info["episode"]["r"])
-                    episode_returns.append(episode_return)
-                    if episode_return > best_return:
-                        best_return = episode_return
-                        best_actor_state = copy.deepcopy(actor.state_dict())
-                        best_qf_state = copy.deepcopy(qf1.state_dict())
-                    print(f"global_step={global_step}, episodic_return={episode_return}")
-                    writer.add_scalar("charts/episodic_return", info["episode"]["r"], global_step)
-                    writer.add_scalar("charts/episodic_length", info["episode"]["l"], global_step)
-                    break
+        if "episode" in infos:
+            episode_mask = infos.get("_episode", np.ones(envs.num_envs, dtype=bool))
+            episode_returns_for_step = np.asarray(infos["episode"]["r"])[episode_mask]
+        else:
+            episode_returns_for_step = [
+                info["episode"]["r"]
+                for info in infos.get("final_info", [])
+                if info is not None and "episode" in info
+            ]
+
+        for episode_return in episode_returns_for_step:
+            episode_return = float(episode_return)
+            episode_returns.append(episode_return)
+            if episode_return > best_return:
+                best_return = episode_return
+                best_actor_state = copy.deepcopy(actor.state_dict())
+                best_qf_state = copy.deepcopy(qf1.state_dict())
+            print(
+                f"epoch={len(episode_returns)}, global_step={global_step}, "
+                f"episodic_return={episode_return}, "
+                f"mean_return={np.mean(episode_returns):.3f}, "
+                f"best_return={best_return:.3f}"
+            )
+            save_reward_plot(run_name, episode_returns)
 
         # TRY NOT TO MODIFY: save data to reply buffer; handle `final_observation`
         real_next_obs = next_obs.copy()
@@ -318,25 +305,7 @@ if __name__ == "__main__":
                 for param, target_param in zip(qf2.parameters(), qf2_target.parameters()):
                     target_param.data.copy_(args.tau * param.data + (1 - args.tau) * target_param.data)
 
-            if global_step % 100 == 0:
-                writer.add_scalar("losses/qf1_values", qf1_a_values.mean().item(), global_step)
-                writer.add_scalar("losses/qf2_values", qf2_a_values.mean().item(), global_step)
-                writer.add_scalar("losses/qf1_loss", qf1_loss.item(), global_step)
-                writer.add_scalar("losses/qf2_loss", qf2_loss.item(), global_step)
-                writer.add_scalar("losses/qf_loss", qf_loss.item() / 2.0, global_step)
-                writer.add_scalar("losses/actor_loss", actor_loss.item(), global_step)
-                writer.add_scalar("losses/alpha", alpha, global_step)
-                print("SPS:", int(global_step / (time.time() - start_time)))
-                writer.add_scalar(
-                    "charts/SPS",
-                    int(global_step / (time.time() - start_time)),
-                    global_step,
-                )
-                if args.autotune:
-                    writer.add_scalar("losses/alpha_loss", alpha_loss.item(), global_step)
-
     envs.close()
-    writer.close()
     plot_path = save_reward_plot(run_name, episode_returns)
     if plot_path:
         print(f"reward plot saved to {plot_path}")

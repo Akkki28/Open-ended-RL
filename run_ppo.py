@@ -12,7 +12,6 @@ import torch.nn as nn
 import torch.optim as optim
 import tyro
 from torch.distributions.categorical import Categorical
-from torch.utils.tensorboard import SummaryWriter
 
 from run_ddpg import register_saved_generated_environments, save_reward_plot
 
@@ -27,12 +26,6 @@ class Args:
     """if toggled, `torch.backends.cudnn.deterministic=False`"""
     cuda: bool = True
     """if toggled, cuda will be enabled by default"""
-    track: bool = False
-    """if toggled, this experiment will be tracked with Weights and Biases"""
-    wandb_project_name: str = "cleanRL"
-    """the wandb's project name"""
-    wandb_entity: str = None
-    """the entity (team) of wandb's project"""
     capture_video: bool = False
     """whether to capture videos of the agent performances (check out `videos` folder)"""
 
@@ -140,24 +133,6 @@ if __name__ == "__main__":
     episode_returns = []
     best_return = float("-inf")
     best_agent_state = None
-    if args.track:
-        import wandb
-
-        wandb.init(
-            project=args.wandb_project_name,
-            entity=args.wandb_entity,
-            sync_tensorboard=True,
-            config=vars(args),
-            name=run_name,
-            monitor_gym=True,
-            save_code=True,
-        )
-    writer = SummaryWriter(f"runs/{run_name}")
-    writer.add_text(
-        "hyperparameters",
-        "|param|value|\n|-|-|\n%s" % ("\n".join([f"|{key}|{value}|" for key, value in vars(args).items()])),
-    )
-
     # TRY NOT TO MODIFY: seeding
     random.seed(args.seed)
     np.random.seed(args.seed)
@@ -187,6 +162,7 @@ if __name__ == "__main__":
     # TRY NOT TO MODIFY: start the game
     global_step = 0
     start_time = time.time()
+    print(f"Starting {run_name} on {device} for {args.total_timesteps} timesteps")
     next_obs, _ = envs.reset(seed=args.seed)
     next_obs = torch.Tensor(next_obs).to(device)
     next_done = torch.zeros(args.num_envs).to(device)
@@ -216,17 +192,29 @@ if __name__ == "__main__":
             rewards[step] = torch.tensor(reward).to(device).view(-1)
             next_obs, next_done = torch.Tensor(next_obs).to(device), torch.Tensor(next_done).to(device)
 
-            if "final_info" in infos:
-                for info in infos["final_info"]:
-                    if info and "episode" in info:
-                        episode_return = float(info["episode"]["r"])
-                        episode_returns.append(episode_return)
-                        if episode_return > best_return:
-                            best_return = episode_return
-                            best_agent_state = copy.deepcopy(agent.state_dict())
-                        print(f"global_step={global_step}, episodic_return={episode_return}")
-                        writer.add_scalar("charts/episodic_return", info["episode"]["r"], global_step)
-                        writer.add_scalar("charts/episodic_length", info["episode"]["l"], global_step)
+            if "episode" in infos:
+                episode_mask = infos.get("_episode", np.ones(envs.num_envs, dtype=bool))
+                episode_returns_for_step = np.asarray(infos["episode"]["r"])[episode_mask]
+            else:
+                episode_returns_for_step = [
+                    info["episode"]["r"]
+                    for info in infos.get("final_info", [])
+                    if info is not None and "episode" in info
+                ]
+
+            for episode_return in episode_returns_for_step:
+                episode_return = float(episode_return)
+                episode_returns.append(episode_return)
+                if episode_return > best_return:
+                    best_return = episode_return
+                    best_agent_state = copy.deepcopy(agent.state_dict())
+                print(
+                    f"epoch={len(episode_returns)}, global_step={global_step}, "
+                    f"episodic_return={episode_return}, "
+                    f"mean_return={np.mean(episode_returns):.3f}, "
+                    f"best_return={best_return:.3f}"
+                )
+                save_reward_plot(run_name, episode_returns)
 
         # bootstrap value if not done
         with torch.no_grad():
@@ -310,20 +298,7 @@ if __name__ == "__main__":
         var_y = np.var(y_true)
         explained_var = np.nan if var_y == 0 else 1 - np.var(y_true - y_pred) / var_y
 
-        # TRY NOT TO MODIFY: record rewards for plotting purposes
-        writer.add_scalar("charts/learning_rate", optimizer.param_groups[0]["lr"], global_step)
-        writer.add_scalar("losses/value_loss", v_loss.item(), global_step)
-        writer.add_scalar("losses/policy_loss", pg_loss.item(), global_step)
-        writer.add_scalar("losses/entropy", entropy_loss.item(), global_step)
-        writer.add_scalar("losses/old_approx_kl", old_approx_kl.item(), global_step)
-        writer.add_scalar("losses/approx_kl", approx_kl.item(), global_step)
-        writer.add_scalar("losses/clipfrac", np.mean(clipfracs), global_step)
-        writer.add_scalar("losses/explained_variance", explained_var, global_step)
-        print("SPS:", int(global_step / (time.time() - start_time)))
-        writer.add_scalar("charts/SPS", int(global_step / (time.time() - start_time)), global_step)
-
     envs.close()
-    writer.close()
     plot_path = save_reward_plot(run_name, episode_returns)
     if plot_path:
         print(f"reward plot saved to {plot_path}")
