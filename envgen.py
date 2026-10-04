@@ -13,10 +13,10 @@ os.makedirs(output_dir, exist_ok=True)
 system_prompt = """
 You are an expert in python programming and Reinforcement Learning. Your goal is to provide the next task for an agent looking to learn a collection of tasks in an open-ended fashion. You will be provided with a list of tasks and how well the agent does well there as compared to a random agent. Your task is to analyze the current level of the agent and write code for the next environment the agent should learn via RL. You are only allowed to change the reward functions and the initial configurations, not the naturer of the robot/agent(action/observation space).
 The suggested task must be:
-1) Learnable: not too difficult for the agent based on its current level.
-2) Feasible: implementable as a self-contained Gymnasium environment.
+1) Interesting: This is the most important. It should not have random add-ons, but rather the suggested task shall be traditionally catch te interest of a user.
+2) Learnable: not too difficult for the agent based on its current level.
 3) Novel: not already present in the existing environment list.
-4) Interesting: worth learning according to human notions of interestingness.
+4) Similar: the observation and the action space must exactly the same as the initial task.
 5) Diverse: vary dynamics, rewards, observations, actions, or initial conditions.
 
 Return a complete Python module for one new environment.
@@ -32,7 +32,7 @@ dictionary and a clear class name ending in Env.
 # Example code from c.py to provide as reference
 
 initial_environment = """
-from os import path
+import math
 
 import numpy as np
 
@@ -41,87 +41,95 @@ from gymnasium import spaces
 from gymnasium.envs.classic_control import utils
 from gymnasium.error import DependencyNotInstalled
 
-DEFAULT_X = np.pi
-DEFAULT_Y = 1.0
 
-
-class PendulumEnv(gym.Env):
-
+class Continuous_MountainCarEnv(gym.Env):
     metadata = {
         "render_modes": ["human", "rgb_array"],
         "render_fps": 30,
     }
 
-    def __init__(self, render_mode: str | None = None, g=10.0):
-        self.max_speed = 8
-        self.max_torque = 2.0
-        self.dt = 0.05
-        self.g = g
-        self.m = 1.0
-        self.l = 1.0
+    def __init__(self, render_mode: str | None = None, goal_velocity=0):
+        self.min_action = -1.0
+        self.max_action = 1.0
+        self.min_position = -1.2
+        self.max_position = 0.6
+        self.max_speed = 0.07
+        self.goal_position = (
+            0.45  # was 0.5 in gymnasium, 0.45 in Arnaud de Broissia's version
+        )
+        self.goal_velocity = goal_velocity
+        self.power = 0.0015
+
+        self.low_state = np.array(
+            [self.min_position, -self.max_speed], dtype=np.float32
+        )
+        self.high_state = np.array(
+            [self.max_position, self.max_speed], dtype=np.float32
+        )
 
         self.render_mode = render_mode
 
-        self.screen_dim = 500
+        self.screen_width = 600
+        self.screen_height = 400
         self.screen = None
         self.clock = None
         self.isopen = True
 
-        high = np.array([1.0, 1.0, self.max_speed], dtype=np.float32)
-        # This will throw a warning in tests/envs/test_envs in utils/env_checker.py as the space is not symmetric
-        #   or normalised as max_torque == 2 by default. Ignoring the issue here as the default settings are too old
-        #   to update to follow the gymnasium api
         self.action_space = spaces.Box(
-            low=-self.max_torque, high=self.max_torque, shape=(1,), dtype=np.float32
+            low=self.min_action, high=self.max_action, shape=(1,), dtype=np.float32
         )
-        self.observation_space = spaces.Box(low=-high, high=high, dtype=np.float32)
+        self.observation_space = spaces.Box(
+            low=self.low_state, high=self.high_state, dtype=np.float32
+        )
 
-    def step(self, u):
-        th, thdot = self.state  # th := theta
+    def step(self, action: np.ndarray):
+        position = self.state[0]
+        velocity = self.state[1]
+        force = min(max(action[0], self.min_action), self.max_action)
 
-        g = self.g
-        m = self.m
-        l = self.l
-        dt = self.dt
+        velocity += force * self.power - 0.0025 * math.cos(3 * position)
+        if velocity > self.max_speed:
+            velocity = self.max_speed
+        if velocity < -self.max_speed:
+            velocity = -self.max_speed
+        position += velocity
+        if position > self.max_position:
+            position = self.max_position
+        if position < self.min_position:
+            position = self.min_position
+        if position == self.min_position and velocity < 0:
+            velocity = 0
 
-        u = np.clip(u, -self.max_torque, self.max_torque)[0]
-        self.last_u = u  # for rendering
-        costs = angle_normalize(th) ** 2 + 0.1 * thdot**2 + 0.001 * (u**2)
+        # Convert a possible numpy bool to a Python bool.
+        terminated = bool(
+            position >= self.goal_position and velocity >= self.goal_velocity
+        )
 
-        newthdot = thdot + (3 * g / (2 * l) * np.sin(th) + 3.0 / (m * l**2) * u) * dt
-        newthdot = np.clip(newthdot, -self.max_speed, self.max_speed)
-        newth = th + newthdot * dt
+        reward = 0
+        if terminated:
+            reward = 100.0
+        reward -= math.pow(action[0], 2) * 0.1
 
-        self.state = np.array([newth, newthdot])
+        self.state = np.array([position, velocity], dtype=np.float32)
 
         if self.render_mode == "human":
             self.render()
         # truncation=False as the time limit is handled by the `TimeLimit` wrapper added during `make`
-        return self._get_obs(), -costs, False, False, {}
+        return self.state, reward, terminated, False, {}
 
     def reset(self, *, seed: int | None = None, options: dict | None = None):
         super().reset(seed=seed)
-        if options is None:
-            high = np.array([DEFAULT_X, DEFAULT_Y])
-        else:
-            # Note that if you use custom reset bounds, it may lead to out-of-bound
-            # state/observations.
-            x = options.get("x_init") if "x_init" in options else DEFAULT_X
-            y = options.get("y_init") if "y_init" in options else DEFAULT_Y
-            x = utils.verify_number_and_cast(x)
-            y = utils.verify_number_and_cast(y)
-            high = np.array([x, y])
-        low = -high  # We enforce symmetric limits.
-        self.state = self.np_random.uniform(low=low, high=high)
-        self.last_u = None
+        # Note that if you use custom reset bounds, it may lead to out-of-bound
+        # state/observations.
+        low, high = utils.maybe_parse_reset_bounds(options, -0.6, -0.4)
+        self.state = np.array([self.np_random.uniform(low=low, high=high), 0])
 
         if self.render_mode == "human":
             self.render()
-        return self._get_obs(), {}
+        return np.array(self.state, dtype=np.float32), {}
 
-    def _get_obs(self):
-        theta, thetadot = self.state
-        return np.array([np.cos(theta), np.sin(theta), thetadot], dtype=np.float32)
+    def _height(self, xs):
+        return np.sin(3 * xs) * 0.45 + 0.55
 
     def render(self):
         if self.render_mode is None:
@@ -145,70 +153,74 @@ class PendulumEnv(gym.Env):
             pygame.display.init()
             if self.render_mode == "human":
                 self.screen = pygame.display.set_mode(
-                    (self.screen_dim, self.screen_dim)
+                    (self.screen_width, self.screen_height)
                 )
-            else:  # mode in "rgb_array"
-                self.screen = pygame.Surface((self.screen_dim, self.screen_dim))
+            else:  # mode == "rgb_array":
+                self.screen = pygame.Surface((self.screen_width, self.screen_height))
         if self.clock is None:
             self.clock = pygame.time.Clock()
 
-        self.surf = pygame.Surface((self.screen_dim, self.screen_dim))
+        world_width = self.max_position - self.min_position
+        scale = self.screen_width / world_width
+        carwidth = 40
+        carheight = 20
+
+        self.surf = pygame.Surface((self.screen_width, self.screen_height))
         self.surf.fill((255, 255, 255))
 
-        bound = 2.2
-        scale = self.screen_dim / (bound * 2)
-        offset = self.screen_dim // 2
+        pos = self.state[0]
 
-        rod_length = 1 * scale
-        rod_width = 0.2 * scale
-        l, r, t, b = 0, rod_length, rod_width / 2, -rod_width / 2
-        coords = [(l, b), (l, t), (r, t), (r, b)]
-        transformed_coords = []
-        for c in coords:
-            c = pygame.math.Vector2(c).rotate_rad(self.state[0] + np.pi / 2)
-            c = (c[0] + offset, c[1] + offset)
-            transformed_coords.append(c)
-        gfxdraw.aapolygon(self.surf, transformed_coords, (204, 77, 77))
-        gfxdraw.filled_polygon(self.surf, transformed_coords, (204, 77, 77))
+        xs = np.linspace(self.min_position, self.max_position, 100)
+        ys = self._height(xs)
+        xys = list(zip((xs - self.min_position) * scale, ys * scale, strict=True))
 
-        gfxdraw.aacircle(self.surf, offset, offset, int(rod_width / 2), (204, 77, 77))
-        gfxdraw.filled_circle(
-            self.surf, offset, offset, int(rod_width / 2), (204, 77, 77)
-        )
+        pygame.draw.aalines(self.surf, points=xys, closed=False, color=(0, 0, 0))
 
-        rod_end = (rod_length, 0)
-        rod_end = pygame.math.Vector2(rod_end).rotate_rad(self.state[0] + np.pi / 2)
-        rod_end = (int(rod_end[0] + offset), int(rod_end[1] + offset))
-        gfxdraw.aacircle(
-            self.surf, rod_end[0], rod_end[1], int(rod_width / 2), (204, 77, 77)
-        )
-        gfxdraw.filled_circle(
-            self.surf, rod_end[0], rod_end[1], int(rod_width / 2), (204, 77, 77)
-        )
+        clearance = 10
 
-        fname = path.join(path.dirname(__file__), "assets/clockwise.png")
-        img = pygame.image.load(fname)
-        if self.last_u is not None:
-            scale_img = pygame.transform.smoothscale(
-                img,
+        l, r, t, b = -carwidth / 2, carwidth / 2, carheight, 0
+        coords = []
+        for c in [(l, b), (l, t), (r, t), (r, b)]:
+            c = pygame.math.Vector2(c).rotate_rad(math.cos(3 * pos))
+            coords.append(
                 (
-                    float(scale * np.abs(self.last_u) / 2),
-                    float(scale * np.abs(self.last_u) / 2),
-                ),
-            )
-            is_flip = bool(self.last_u > 0)
-            scale_img = pygame.transform.flip(scale_img, is_flip, True)
-            self.surf.blit(
-                scale_img,
-                (
-                    offset - scale_img.get_rect().centerx,
-                    offset - scale_img.get_rect().centery,
-                ),
+                    c[0] + (pos - self.min_position) * scale,
+                    c[1] + clearance + self._height(pos) * scale,
+                )
             )
 
-        # drawing axle
-        gfxdraw.aacircle(self.surf, offset, offset, int(0.05 * scale), (0, 0, 0))
-        gfxdraw.filled_circle(self.surf, offset, offset, int(0.05 * scale), (0, 0, 0))
+        gfxdraw.aapolygon(self.surf, coords, (0, 0, 0))
+        gfxdraw.filled_polygon(self.surf, coords, (0, 0, 0))
+
+        for c in [(carwidth / 4, 0), (-carwidth / 4, 0)]:
+            c = pygame.math.Vector2(c).rotate_rad(math.cos(3 * pos))
+            wheel = (
+                int(c[0] + (pos - self.min_position) * scale),
+                int(c[1] + clearance + self._height(pos) * scale),
+            )
+
+            gfxdraw.aacircle(
+                self.surf, wheel[0], wheel[1], int(carheight / 2.5), (128, 128, 128)
+            )
+            gfxdraw.filled_circle(
+                self.surf, wheel[0], wheel[1], int(carheight / 2.5), (128, 128, 128)
+            )
+
+        flagx = int((self.goal_position - self.min_position) * scale)
+        flagy1 = int(self._height(self.goal_position) * scale)
+        flagy2 = flagy1 + 50
+        gfxdraw.vline(self.surf, flagx, flagy1, flagy2, (0, 0, 0))
+
+        gfxdraw.aapolygon(
+            self.surf,
+            [(flagx, flagy2), (flagx, flagy2 - 10), (flagx + 25, flagy2 - 5)],
+            (204, 204, 0),
+        )
+        gfxdraw.filled_polygon(
+            self.surf,
+            [(flagx, flagy2), (flagx, flagy2 - 10), (flagx + 25, flagy2 - 5)],
+            (204, 204, 0),
+        )
 
         self.surf = pygame.transform.flip(self.surf, False, True)
         self.screen.blit(self.surf, (0, 0))
@@ -217,7 +229,7 @@ class PendulumEnv(gym.Env):
             self.clock.tick(self.metadata["render_fps"])
             pygame.display.flip()
 
-        else:  # mode == "rgb_array":
+        elif self.render_mode == "rgb_array":
             return np.transpose(
                 np.array(pygame.surfarray.pixels3d(self.screen)), axes=(1, 0, 2)
             )
@@ -229,10 +241,6 @@ class PendulumEnv(gym.Env):
             pygame.display.quit()
             pygame.quit()
             self.isopen = False
-
-
-def angle_normalize(x):
-    return ((x + np.pi) % (2 * np.pi)) - np.pi
 
 
 """
@@ -286,7 +294,7 @@ The agents have currently successfully learned the following environments:
 Measured random-agent versus learned-agent performance:
 {json.dumps(performance_report, indent=2)}
 
-The next environment must keep the exact Pendulum observation and action spaces,
+The next environment must keep the exact same observation and action spaces,
 because it will be trained by the same DDPG implementation.
 
 Please reason briefly about what RL environment the agents should learn next.

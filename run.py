@@ -163,7 +163,7 @@ def main():
     args = parser.parse_args()
 
     reports = []
-    env_id = "Pendulum-v1"
+    env_id = "MountainCarContinuous-v0"
     learned_titles = [env_id]
     save_learned_titles(args.learned_titles_file, learned_titles)
     for iteration in range(args.iterations + 1):
