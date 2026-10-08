@@ -190,7 +190,7 @@ def load_resume_environment(learned_titles_file):
     """Restore the latest generated environment recorded by a previous run."""
     registry_path = Path("runs/generated_environments.json")
     if not registry_path.is_file():
-        return "MountainCarContinuous-v0", ["MountainCarContinuous-v0"]
+        return "HalfCheetah-v5", ["HalfCheetah-v5"]
 
     try:
         with registry_path.open(encoding="utf-8") as registry_file:
@@ -204,9 +204,9 @@ def load_resume_environment(learned_titles_file):
         raise RuntimeError(f"Generated environment registry must be an object: {registry_path}")
 
     register_saved_generated_environments()
-    env_id = next(reversed(generated_registry), "MountainCarContinuous-v0")
+    env_id = next(reversed(generated_registry), "HalfCheetah-v5")
 
-    titles = ["MountainCarContinuous-v0"]
+    titles = ["HalfCheetah-v5"]
     titles_path = Path(learned_titles_file)
     if titles_path.is_file():
         with titles_path.open(encoding="utf-8") as titles_file:
@@ -294,7 +294,7 @@ def main():
             )
         print(f"Resuming from {env_id}")
     else:
-        env_id = "MountainCarContinuous-v0"
+        env_id = "HalfCheetah-v5"
         learned_titles = [env_id]
         reports = []
     save_learned_titles(args.learned_titles_file, learned_titles)

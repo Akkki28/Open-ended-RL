@@ -8,7 +8,7 @@ import re
 import math
 
 # Generated environments are written as importable Gymnasium modules.
-output_dir = os.path.join("gymnasium", "envs", "classic_control")
+output_dir = os.path.join("gymnasium", "envs", "mujoco")
 os.makedirs(output_dir, exist_ok=True)
 
 # System prompt from LLM.py
@@ -260,7 +260,7 @@ def generate_environment(learned_titles, performance_report, output_dir=None):
     if not os.environ.get("GROQ_API_KEY"):
         raise RuntimeError("GROQ_API_KEY must be set before generating an environment")
 
-    output_dir = output_dir or os.path.join("gymnasium", "envs", "classic_control")
+    output_dir = output_dir or os.path.join("gymnasium", "envs", "mujoco")
     os.makedirs(output_dir, exist_ok=True)
     user_prompt = f"""
 Here is the base environment from which learning started
