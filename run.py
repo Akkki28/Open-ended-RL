@@ -13,6 +13,7 @@ import torch
 from gymnasium.envs.registration import register
 
 from envgen import generate_environment
+from run_ddpg import register_saved_generated_environments
 from run_saved_agent import discover_agents, run_agent
 
 GENERATED_ENV_MAX_STEPS = 200
@@ -185,14 +186,93 @@ def register_generated_environment(module_name, module_path):
     return env_id
 
 
+def load_resume_environment(learned_titles_file):
+    """Restore the latest generated environment recorded by a previous run."""
+    registry_path = Path("runs/generated_environments.json")
+    if not registry_path.is_file():
+        return "MountainCarContinuous-v0", ["MountainCarContinuous-v0"]
+
+    try:
+        with registry_path.open(encoding="utf-8") as registry_file:
+            generated_registry = json.load(registry_file)
+    except (OSError, json.JSONDecodeError) as error:
+        raise RuntimeError(
+            f"Could not read generated environment registry: {registry_path}"
+        ) from error
+
+    if not isinstance(generated_registry, dict):
+        raise RuntimeError(f"Generated environment registry must be an object: {registry_path}")
+
+    register_saved_generated_environments()
+    env_id = next(reversed(generated_registry), "MountainCarContinuous-v0")
+
+    titles = ["MountainCarContinuous-v0"]
+    titles_path = Path(learned_titles_file)
+    if titles_path.is_file():
+        with titles_path.open(encoding="utf-8") as titles_file:
+            saved_titles = [line.strip() for line in titles_file if line.strip()]
+        if saved_titles:
+            titles = saved_titles
+    return env_id, titles
+
+
+def load_pipeline_reports():
+    """Load performance history from a previous pipeline run."""
+    results_path = Path("runs/pipeline_results.json")
+    if not results_path.is_file():
+        return []
+    try:
+        with results_path.open(encoding="utf-8") as results_file:
+            reports = json.load(results_file)
+    except (OSError, json.JSONDecodeError) as error:
+        raise RuntimeError(f"Could not read pipeline results: {results_path}") from error
+    if not isinstance(reports, list) or not all(
+        isinstance(report, dict) for report in reports
+    ):
+        raise RuntimeError(f"Pipeline results must be a list of objects: {results_path}")
+    return reports
+
+
+def save_pipeline_reports(reports):
+    os.makedirs("runs", exist_ok=True)
+    with open("runs/pipeline_results.json", "w", encoding="utf-8") as results_file:
+        json.dump(reports, results_file, indent=2)
+
+
+def rebuild_pipeline_reports(episodes, seed, cuda, algorithm):
+    """Evaluate saved agents to reconstruct history when results are unavailable."""
+    register_saved_generated_environments()
+    reports = []
+    for offset, (saved_env_id, checkpoint_path) in enumerate(discover_agents("runs")):
+        random_returns = evaluate_random(saved_env_id, episodes, seed + offset)
+        learned_returns = evaluate_learned(
+            saved_env_id,
+            checkpoint_path,
+            episodes,
+            seed + offset,
+            cuda,
+            algorithm=algorithm,
+        )
+        report = summarize(random_returns, learned_returns)
+        report.update({"env_id": saved_env_id, "checkpoint": str(checkpoint_path)})
+        reports.append(report)
+    return reports
+
+
 def main():
     parser = argparse.ArgumentParser(description="Run the open-ended RL training pipeline")
     parser.add_argument("--total-timesteps", type=int, default=30_000)
     parser.add_argument("--learning-starts", type=int, default=5_000)
     parser.add_argument("--episodes", type=int, default=5)
     parser.add_argument("--iterations", type=int, default=1)
+    parser.add_argument(
+        "--resume",
+        action=argparse.BooleanOptionalAction,
+        default=False,
+        help="resume from the newest generated environment in runs/generated_environments.json",
+    )
     parser.add_argument("--seed", type=int, default=1)
-    parser.add_argument("--algorithm", choices=("ddpg", "sac", "ppo"), default="ddpg")
+    parser.add_argument("--algorithm", choices=("ddpg", "sac", "ppo"), default="sac")
     parser.add_argument("--cuda", action=argparse.BooleanOptionalAction, default=True)
     parser.add_argument("--learned-titles-file", default="runs/learned_titles.txt")
     parser.add_argument(
@@ -205,21 +285,39 @@ def main():
     parser.add_argument("--video-episodes", type=int, default=1)
     args = parser.parse_args()
 
-    reports = []
-    env_id = "MountainCarContinuous-v0"
-    learned_titles = [env_id]
+    if args.resume:
+        env_id, learned_titles = load_resume_environment(args.learned_titles_file)
+        reports = load_pipeline_reports()
+        if not reports:
+            reports = rebuild_pipeline_reports(
+                args.episodes, args.seed, args.cuda, args.algorithm
+            )
+        print(f"Resuming from {env_id}")
+    else:
+        env_id = "MountainCarContinuous-v0"
+        learned_titles = [env_id]
+        reports = []
     save_learned_titles(args.learned_titles_file, learned_titles)
     for iteration in range(args.iterations + 1):
         exp_name = f"pipeline_stage_{iteration}"
-        checkpoint = train(
-            env_id,
-            args.seed + iteration,
-            args.total_timesteps,
-            args.learning_starts,
-            exp_name,
-            algorithm=args.algorithm,
-            reuse_existing=iteration == 0,
-        )
+        if args.resume and iteration == 0:
+            saved_agents = discover_agents("runs", environment_id=env_id)
+            if not saved_agents:
+                raise FileNotFoundError(
+                    f"No saved checkpoint found for resumed environment: {env_id}"
+                )
+            checkpoint = str(saved_agents[-1][1])
+            print(f"Reusing saved checkpoint: {checkpoint}")
+        else:
+            checkpoint = train(
+                env_id,
+                args.seed + iteration,
+                args.total_timesteps,
+                args.learning_starts,
+                exp_name,
+                algorithm=args.algorithm,
+                reuse_existing=iteration == 0,
+            )
         random_returns = evaluate_random(env_id, args.episodes, args.seed + iteration)
         learned_returns = evaluate_learned(
             env_id,
@@ -231,20 +329,19 @@ def main():
         )
         report = summarize(random_returns, learned_returns)
         report.update({"env_id": env_id, "checkpoint": checkpoint})
+        reports = [previous for previous in reports if previous.get("env_id") != env_id]
         reports.append(report)
         print(json.dumps(report, indent=2))
+        save_pipeline_reports(reports)
 
         if iteration == args.iterations:
             break
-        generated = generate_environment(learned_titles, report)
+        generated = generate_environment(learned_titles, reports)
         env_id = register_generated_environment(generated["module_name"], generated["module_path"])
         learned_titles.append(generated["title"])
         save_learned_titles(args.learned_titles_file, learned_titles)
         print(f"Generated and registered {env_id}: {generated['title']}")
 
-    os.makedirs("runs", exist_ok=True)
-    with open("runs/pipeline_results.json", "w", encoding="utf-8") as results_file:
-        json.dump(reports, results_file, indent=2)
     print("Pipeline results saved to runs/pipeline_results.json")
 
     if args.generate_videos and args.algorithm == "ddpg":

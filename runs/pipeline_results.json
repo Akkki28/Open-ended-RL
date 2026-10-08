@@ -1,0 +1,128 @@
+[
+  {
+    "random_returns": [
+      -9.742601178681946,
+      -8.877853498151884,
+      -8.505721049126377,
+      -8.669596317068082,
+      -8.234675917321615
+    ],
+    "learned_returns": [
+      -2.0000669374733704,
+      -2.0000227876183527,
+      -2.0000123757657824,
+      -2.000383154069345,
+      -2.0001280489782745
+    ],
+    "random_mean": -8.806089592069982,
+    "learned_mean": -2.0001226607810247,
+    "improvement": 6.805966931288958,
+    "env_id": "GeneratedCreateANewGymnasiumEnvironmentNamedContinuousMountaincardynami6D491D46C0-v0",
+    "checkpoint": "runs\\GeneratedCreateANewGymnasiumEnvironmentNamedContinuousMountaincardynami6D491D46C0-v0__pipeline_stage_2__3__1791144519\\pipeline_stage_2.cleanrl_model"
+  },
+  {
+    "random_returns": [
+      -8.491349473590084,
+      -8.240045517159798,
+      -8.602651186230947,
+      -8.58241883200797,
+      -8.781082108324625
+    ],
+    "learned_returns": [
+      -2.0000708854679057,
+      -2.0000124442686276,
+      -2.000000184914757,
+      -2.0000141268953193,
+      -2.0000135152607776
+    ],
+    "random_mean": -8.539509423462686,
+    "learned_mean": -2.0000222313614775,
+    "improvement": 6.539487192101209,
+    "env_id": "GeneratedCreateANewGymnasiumEnvironmentNamedContinuousMountaincarwinden229D4A7075-v0",
+    "checkpoint": "runs\\GeneratedCreateANewGymnasiumEnvironmentNamedContinuousMountaincarwinden229D4A7075-v0__pipeline_stage_1__2__1791143726\\pipeline_stage_1.cleanrl_model"
+  },
+  {
+    "random_returns": [
+      -32.61495033400875,
+      -33.82796312114286,
+      -33.29338727704026,
+      -33.945925723442016,
+      -33.494049787391525
+    ],
+    "learned_returns": [
+      -0.00026161711636351476,
+      -0.00023878757314709745,
+      -0.00021372077470282224,
+      -0.00021860052453713663,
+      -0.00021067583956649357
+    ],
+    "random_mean": -33.43525524860509,
+    "learned_mean": -0.0002286803656634129,
+    "improvement": 33.43502656823942,
+    "env_id": "MountainCarContinuous-v0",
+    "checkpoint": "runs\\MountainCarContinuous-v0__pipeline_stage_0__1__1791143085\\pipeline_stage_0.cleanrl_model"
+  },
+  {
+    "random_returns": [
+      -8.972435118630528,
+      -9.399754404090345,
+      -8.80317869130522,
+      -8.804790063761175,
+      -8.555221797898412
+    ],
+    "learned_returns": [
+      -2.0001283828169107,
+      -2.0001222379505634,
+      -2.0001224745064974,
+      -2.0001204647123814,
+      -2.0001286985352635
+    ],
+    "random_mean": -8.907076015137136,
+    "learned_mean": -2.0001244517043233,
+    "improvement": 6.906951563432813,
+    "env_id": "GeneratedCreateANewGymnasiumEnvironmentNamedContinuousMountaincarsticky69De6B62A4-v0",
+    "checkpoint": "runs\\GeneratedCreateANewGymnasiumEnvironmentNamedContinuousMountaincarsticky69De6B62A4-v0__pipeline_stage_3__4__1791145445\\pipeline_stage_3.cleanrl_model"
+  },
+  {
+    "random_returns": [
+      92.52048719488084,
+      -8.83504265267402,
+      -8.05288990586996,
+      92.42393779847771,
+      -8.141590472310781
+    ],
+    "learned_returns": [
+      94.76035386510193,
+      96.44282705150545,
+      -4.026016138494015,
+      94.45976184494793,
+      97.09267920814455
+    ],
+    "random_mean": 31.982980392500757,
+    "learned_mean": 75.74592116624117,
+    "improvement": 43.76294077374042,
+    "env_id": "GeneratedCreateAGymnasiumEnvironmentContinuousMountaincargravityflipenvW487E548Af7-v0",
+    "checkpoint": "runs\\GeneratedCreateAGymnasiumEnvironmentContinuousMountaincargravityflipenvW487E548Af7-v0__pipeline_stage_1__2__1791147185\\pipeline_stage_1.cleanrl_model"
+  },
+  {
+    "random_returns": [
+      -0.6561539335168902,
+      -0.6980362418205708,
+      -0.728548943522425,
+      -0.6581003108649881,
+      -0.6866614721635642
+    ],
+    "learned_returns": [
+      -0.0008429422551898824,
+      -0.0011462133963913742,
+      -0.001606693247303781,
+      -0.0015367170845724289,
+      -0.0005897331152482366
+    ],
+    "random_mean": -0.6855001803776877,
+    "learned_mean": -0.0011444598197411407,
+    "improvement": 0.6843557205579466,
+    "env_id": "GeneratedContinuousMountaincarfrictionenvAContinuousMountaincarVariantWh17Edbd04Fe-v0",
+    "checkpoint": "runs\\GeneratedContinuousMountaincarfrictionenvAContinuousMountaincarVariantWh17Edbd04Fe-v0__pipeline_stage_1__2__1791148250\\pipeline_stage_1.cleanrl_model"
+  }
+]

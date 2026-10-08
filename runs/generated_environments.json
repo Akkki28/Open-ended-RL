@@ -1,0 +1,20 @@
+{
+  "GeneratedCreateANewGymnasiumEnvironmentNamedContinuousMountaincarwinden229D4A7075-v0": {
+    "entry_point": "gymnasium.envs.classic_control.create_a_new_gymnasium_environment_named_continuous_mountaincarwinden_229d4a7075:Continuous_MountainCarWindEnv"
+  },
+  "GeneratedCreateANewGymnasiumEnvironmentNamedContinuousMountaincardynami6D491D46C0-v0": {
+    "entry_point": "gymnasium.envs.classic_control.create_a_new_gymnasium_environment_named_continuous_mountaincardynami_6d491d46c0:Continuous_MountainCarDynamicGoalEnv"
+  },
+  "GeneratedCreateANewGymnasiumEnvironmentNamedContinuousMountaincarsticky69De6B62A4-v0": {
+    "entry_point": "gymnasium.envs.classic_control.create_a_new_gymnasium_environment_named_continuous_mountaincarsticky_69de6b62a4:Continuous_MountainCarStickyRegionEnv"
+  },
+  "GeneratedCreateAGymnasiumEnvironmentContinuousMountaincargravityflipenvW487E548Af7-v0": {
+    "entry_point": "gymnasium.envs.classic_control.create_a_gymnasium_environment_continuous_mountaincargravityflipenv_w_487e548af7:Continuous_MountainCarGravityFlipEnv"
+  },
+  "GeneratedContinuousMountaincarfrictionenvAContinuousMountaincarVariantWh17Edbd04Fe-v0": {
+    "entry_point": "gymnasium.envs.classic_control.continuous_mountaincarfrictionenv_a_continuous_mountaincar_variant_wh_17edbd04fe:Continuous_MountainCarFrictionEnv"
+  },
+  "GeneratedContinuousMountaincarvariableslopeenvSameObservationActionSpaces16Bc9Cc33F-v0": {
+    "entry_point": "gymnasium.envs.classic_control.continuous_mountaincarvariableslopeenv_same_observation_action_spaces_16bc9cc33f:Continuous_MountainCarVariableSlopeEnv"
+  }
+}
