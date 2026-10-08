@@ -33,8 +33,6 @@ dictionary and a clear class name ending in Env.
 # Example code from c.py to provide as reference
 
 initial_environment = """
-__credits__ = ["Kallinteris-Andreas", "Rushiv Arora"]
-
 import numpy as np
 
 from gymnasium import utils
@@ -190,30 +188,6 @@ class HalfCheetahEnv(MujocoEnv, utils.EzPickle):
 
 """
 
-# The full source above is useful documentation, but including its rendering
-# implementation in every request leaves too little room for the generated
-# module and causes long-running pipelines to exceed Groq's TPM limit.
-generation_reference = """
-The base environment is Continuous_MountainCarEnv, a gymnasium.Env with:
-- action_space = spaces.Box(low=-1.0, high=1.0, shape=(1,), dtype=np.float32)
-- observation_space = spaces.Box(
-    low=np.array([-1.2, -0.07], dtype=np.float32),
-    high=np.array([0.6, 0.07], dtype=np.float32),
-    dtype=np.float32,
-  )
-- state = [position, velocity], initialized with position uniformly in [-0.6, -0.4]
-  and velocity 0
-- velocity update: velocity += action[0] * 0.0015 - 0.0025 * cos(3 * position),
-  clipped to [-0.07, 0.07]; position += velocity, clipped to [-1.2, 0.6]
-- termination when position >= 0.45 and velocity >= 0
-- reward is 100 on termination minus 0.1 * action[0]**2 otherwise
-- reset returns (float32 state, {}); step returns
-  (float32 state, reward, terminated, truncated, {})
-- render() and close() follow the standard Gymnasium API and may use pygame.
-The generated environment must preserve these exact action and observation spaces.
-"""
-
-
 GROQ_TPM_LIMIT = 8_000
 GROQ_REQUEST_SAFETY_MARGIN = 200
 MAX_COMPLETION_TOKENS = 4_500
@@ -292,7 +266,7 @@ def generate_environment(learned_titles, performance_report, output_dir=None):
 Here is the base environment from which learning started
 reference:
 ```python
-{generation_reference}
+{initial_environment}
 ```
 
 The agents have currently successfully learned the following environments:
