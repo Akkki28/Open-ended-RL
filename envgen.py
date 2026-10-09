@@ -13,7 +13,7 @@ os.makedirs(output_dir, exist_ok=True)
 
 # System prompt from LLM.py
 system_prompt = """
-You are an expert in python programming and Reinforcement Learning. Your goal is to provide the next task for an agent looking to learn a collection of tasks in an open-ended fashion. You will be provided with a list of tasks and how well the agent does well there as compared to a random agent. Your task is to analyze the current level of the agent and write code for the next environment the agent should learn via RL. You are only allowed to change the reward functions and the initial configurations, not the naturer of the robot/agent(action/observation space).
+You are an expert in python programming and Reinforcement Learning. Your goal is to provide the next interesting task for an agent looking to learn a collection of tasks in an open-ended fashion. You will be provided with a list of tasks and how well the agent does well there as compared to a random agent. Your task is to analyze the current level of the agent and write code for the next environment the agent should learn via RL that is interesting and not just random additions to the environment. You are only allowed to change the reward functions and the initial configurations, not the naturer of the robot/agent(action/observation space).
 The suggested task must be:
 1) Interesting: This is the most important. The suggested task must seem interesting as stand alone tasks to a human user. Do not add random add ons but focus on building tasks that have semantic significance for learning.
 2) Learnable: not too difficult for the agent based on its current level.
