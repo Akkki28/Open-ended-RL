@@ -16,5 +16,26 @@
   },
   "GeneratedContinuousMountaincarvariableslopeenvSameObservationActionSpaces16Bc9Cc33F-v0": {
     "entry_point": "gymnasium.envs.classic_control.continuous_mountaincarvariableslopeenv_same_observation_action_spaces_16bc9cc33f:Continuous_MountainCarVariableSlopeEnv"
+  },
+  "GeneratedHalfcheetahvelocitytrackingenvRewardEncouragesMatchingARandomTaE0Da38Ea72-v0": {
+    "entry_point": "gymnasium.envs.mujoco.halfcheetahvelocitytrackingenv_reward_encourages_matching_a_random_ta_e0da38ea72:HalfCheetahVelocityTrackingEnv"
+  },
+  "GeneratedHalfcheetahenergyefficiencyenvRewardCombinesForwardSpeedPenalize629Bb230A2-v0": {
+    "entry_point": "gymnasium.envs.mujoco.halfcheetahenergyefficiencyenv_reward_combines_forward_speed_penalize_629bb230a2:HalfCheetahEnergyEfficiencyEnv"
+  },
+  "GeneratedHalfcheetahsmoothcontrolenvRewardForwardSpeedCtrlCostJerkCost2021B04753-v0": {
+    "entry_point": "gymnasium.envs.mujoco.halfcheetahsmoothcontrolenv_reward_forward_speed_ctrl_cost_jerk_cost_2021b04753:HalfCheetahSmoothControlEnv"
+  },
+  "GeneratedHalfcheetahsinusoidalvelocityenvRewardPenalizesDeviationFromASiA15A59A1A9-v0": {
+    "entry_point": "gymnasium.envs.mujoco.halfcheetahsinusoidalvelocityenv_reward_penalizes_deviation_from_a_si_a15a59a1a9:HalfCheetahSinusoidalVelocityEnv"
+  },
+  "GeneratedHalfcheetahlanekeepingenvRewardForwardSpeedCtrlCostLanePenalty9007D4D418-v0": {
+    "entry_point": "gymnasium.envs.mujoco.halfcheetahlanekeepingenv_reward_forward_speed_ctrl_cost_lane_penalty_9007d4d418:HalfCheetahLaneKeepingEnv"
+  },
+  "GeneratedHalfcheetahdirectionenvRewardEncouragesMovingInARandomlyChosenFee74Db971-v0": {
+    "entry_point": "gymnasium.envs.mujoco.halfcheetahdirectionenv_reward_encourages_moving_in_a_randomly_chosen_fee74db971:HalfCheetahDirectionEnv"
+  },
+  "GeneratedHalfcheetahsteadyspeedenvRewardEncouragesForwardSpeedPenalizesCF9Aa6A22E2-v0": {
+    "entry_point": "gymnasium.envs.mujoco.halfcheetahsteadyspeedenv_reward_encourages_forward_speed_penalizes_c_f9aa6a22e2:HalfCheetahSteadySpeedEnv"
   }
 }

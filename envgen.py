@@ -257,7 +257,8 @@ def _check_generated_environment(module_path):
             environment.close()
     except Exception as error:
         raise RuntimeError(
-            f"Generated environment failed Gymnasium's check_env: {module_path}"
+            f"Generated environment failed Gymnasium's check_env: {module_path}: "
+            f"{error}"
         ) from error
 
 
@@ -298,6 +299,11 @@ The environment must enforce a
 increment it, and return truncated=True when the counter reaches 200 unless the
 episode has already terminated. Keep the truncation logic inside the environment
 as a defensive fallback; the runner also applies Gymnasium's TimeLimit wrapper.
+When inheriting from MujocoEnv, do not put `"render_fps": None` in the class-level
+metadata: MujocoEnv validates that value during its constructor. Either omit
+`render_fps` from class metadata or set it to the exact value implied by the model
+before calling MujocoEnv.__init__; setting `self.metadata["render_fps"]` after the
+parent constructor is also valid.
 """
     client = Groq(api_key=os.environ["GROQ_API_KEY"])
     validation_feedback = ""

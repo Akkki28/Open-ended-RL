@@ -1,1 +1,8 @@
 HalfCheetah-v5
+HalfCheetahVelocityTrackingEnv: reward encourages matching a random target velocity while penalizing control effort; episode ends after 200 steps.
+HalfCheetahEnergyEfficiencyEnv: reward combines forward speed, penalizes control effort more heavily, encourages maintaining a nominal torso height, and penalizes large pitch angles. Episodes end after 200 steps or if the cheetah tilts beyond a safe angle.
+HalfCheetahSmoothControlEnv: reward = forward_speed – ctrl_cost – jerk_cost – pitch_penalty. Episode ends after 200 steps (truncated).
+HalfCheetahSinusoidalVelocityEnv: reward penalizes deviation from a sinusoidal target forward velocity (amplitude = 2 m/s, frequency = 0.05 Hz) and control effort; episodes end after 200 steps (truncated).
+HalfCheetahLaneKeepingEnv: reward = forward_speed – ctrl_cost – lane_penalty (absolute lateral displacement). Episode ends after 200 steps or if the cheetah tilts excessively.
+HalfCheetahDirectionEnv – reward encourages moving in a randomly chosen target direction (forward or backward) each episode while penalizing control effort; includes internal 200‑step horizon handling.
+HalfCheetahSteadySpeedEnv – reward encourages forward speed, penalizes control effort and penalizes rapid changes in speed, fostering smooth, steady locomotion.

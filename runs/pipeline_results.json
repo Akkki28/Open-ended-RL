@@ -1,11 +1,11 @@
 [
   {
     "random_returns": [
-      -407.2150563139015,
-      -256.10770254091943,
-      -139.43290654068394,
-      -319.1879584689198,
-      -232.61945806004888
+      -236.61544684121125,
+      -341.5773716685531,
+      -234.33606670736143,
+      -339.10062632973404,
+      -197.29538596483533
     ],
     "learned_returns": [
       2769.176090735139,
@@ -14,10 +14,157 @@
       2726.8324858677124,
       1187.0833527489099
     ],
-    "random_mean": -270.9126163848947,
+    "random_mean": -269.784979502339,
     "learned_mean": 2353.467114346041,
-    "improvement": 2624.3797307309355,
+    "improvement": 2623.25209384838,
     "env_id": "HalfCheetah-v5",
     "checkpoint": "runs\\HalfCheetah-v5__pipeline_stage_0__1__1791741252\\pipeline_stage_0.cleanrl_model"
+  },
+  {
+    "random_returns": [
+      -234.8012996745467,
+      -321.94023749941863,
+      -197.42214036074228,
+      -349.7820546782224,
+      -436.13987491109054
+    ],
+    "learned_returns": [
+      -118.98533760236083,
+      -208.3679025640165,
+      -151.5379200274636,
+      -205.61714883634724,
+      -248.61818812351368
+    ],
+    "random_mean": -308.01712142480415,
+    "learned_mean": -186.62529943074037,
+    "improvement": 121.39182199406378,
+    "env_id": "GeneratedHalfcheetahvelocitytrackingenvRewardEncouragesMatchingARandomTaE0Da38Ea72-v0",
+    "checkpoint": "runs\\GeneratedHalfcheetahvelocitytrackingenvRewardEncouragesMatchingARandomTaE0Da38Ea72-v0__pipeline_stage_1__2__1791742973\\pipeline_stage_1.cleanrl_model"
+  },
+  {
+    "random_returns": [
+      -218.31824974633216,
+      -11.436088261197188,
+      -95.96026818656668,
+      -231.36980641331303,
+      -289.45000454461405
+    ],
+    "learned_returns": [
+      452.44597169698227,
+      442.57735327372484,
+      449.13254176890746,
+      333.92407265776876,
+      422.0746214874192
+    ],
+    "random_mean": -169.30688343040464,
+    "learned_mean": 420.03091217696056,
+    "improvement": 589.3377956073653,
+    "env_id": "GeneratedHalfcheetahenergyefficiencyenvRewardCombinesForwardSpeedPenalize629Bb230A2-v0",
+    "checkpoint": "runs\\GeneratedHalfcheetahenergyefficiencyenvRewardCombinesForwardSpeedPenalize629Bb230A2-v0__pipeline_stage_2__3__1791743680\\pipeline_stage_2.cleanrl_model"
+  },
+  {
+    "random_returns": [
+      -57.76834861357478,
+      -84.91555973482983,
+      -156.51563595159524,
+      -89.3945443930535,
+      -141.7717297455269
+    ],
+    "learned_returns": [
+      502.3161502385001,
+      470.3550790144322,
+      468.12171814681693,
+      484.9316991910001,
+      443.13261712650143
+    ],
+    "random_mean": -106.07316368771603,
+    "learned_mean": 473.77145274345014,
+    "improvement": 579.8446164311662,
+    "env_id": "GeneratedHalfcheetahsmoothcontrolenvRewardForwardSpeedCtrlCostJerkCost2021B04753-v0",
+    "checkpoint": "runs\\GeneratedHalfcheetahsmoothcontrolenvRewardForwardSpeedCtrlCostJerkCost2021B04753-v0__pipeline_stage_3__4__1791744451\\pipeline_stage_3.cleanrl_model"
+  },
+  {
+    "random_returns": [
+      -321.264823846654,
+      -331.4121075262885,
+      -308.44153379696024,
+      -340.2672030472406,
+      -305.71081128355496
+    ],
+    "learned_returns": [
+      -198.2024433970957,
+      -205.881784295052,
+      -204.57763198769698,
+      -175.59432211212732,
+      -203.7815243692518
+    ],
+    "random_mean": -321.4192959001397,
+    "learned_mean": -197.60754123224473,
+    "improvement": 123.81175466789495,
+    "env_id": "GeneratedHalfcheetahsinusoidalvelocityenvRewardPenalizesDeviationFromASiA15A59A1A9-v0",
+    "checkpoint": "runs\\GeneratedHalfcheetahsinusoidalvelocityenvRewardPenalizesDeviationFromASiA15A59A1A9-v0__pipeline_stage_4__5__1791745702\\pipeline_stage_4.cleanrl_model"
+  },
+  {
+    "random_returns": [
+      -65.76552065660526,
+      -78.58433278277631,
+      -77.43053913415196,
+      -90.99877344537033,
+      -29.53503502236458
+    ],
+    "learned_returns": [
+      229.87819782480275,
+      443.0815668085013,
+      455.0386177495642,
+      308.7138125033973,
+      456.4708909231234
+    ],
+    "random_mean": -68.4628402082537,
+    "learned_mean": 378.6366171618778,
+    "improvement": 447.09945737013146,
+    "env_id": "GeneratedHalfcheetahlanekeepingenvRewardForwardSpeedCtrlCostLanePenalty9007D4D418-v0",
+    "checkpoint": "runs\\GeneratedHalfcheetahlanekeepingenvRewardForwardSpeedCtrlCostLanePenalty9007D4D418-v0__pipeline_stage_5__6__1791746751\\pipeline_stage_5.cleanrl_model"
+  },
+  {
+    "random_returns": [
+      16.879984407734412,
+      -85.70378209116339,
+      34.51691287270659,
+      -33.821985668789644,
+      -59.65478152334147
+    ],
+    "learned_returns": [
+      12.49473969469242,
+      -49.3984244454125,
+      47.26099963583335,
+      -67.49243965008964,
+      3.704697531316163
+    ],
+    "random_mean": -25.5567304005707,
+    "learned_mean": -10.68608544673204,
+    "improvement": 14.87064495383866,
+    "env_id": "GeneratedHalfcheetahdirectionenvRewardEncouragesMovingInARandomlyChosenFee74Db971-v0",
+    "checkpoint": "runs\\GeneratedHalfcheetahdirectionenvRewardEncouragesMovingInARandomlyChosenFee74Db971-v0__pipeline_stage_6__7__1791747487\\pipeline_stage_6.cleanrl_model"
+  },
+  {
+    "random_returns": [
+      -114.23993859587448,
+      -55.49138938797942,
+      -114.27542940390019,
+      -107.37674492000424,
+      -113.80455872326684
+    ],
+    "learned_returns": [
+      393.00363986923,
+      193.69509953450992,
+      308.61149440548047,
+      481.4324135878222,
+      308.71866606040317
+    ],
+    "random_mean": -101.03761220620503,
+    "learned_mean": 337.09226269148917,
+    "improvement": 438.1298748976942,
+    "env_id": "GeneratedHalfcheetahsteadyspeedenvRewardEncouragesForwardSpeedPenalizesCF9Aa6A22E2-v0",
+    "checkpoint": "runs\\GeneratedHalfcheetahsteadyspeedenvRewardEncouragesForwardSpeedPenalizesCF9Aa6A22E2-v0__pipeline_stage_7__8__1791748227\\pipeline_stage_7.cleanrl_model"
   }
 ]

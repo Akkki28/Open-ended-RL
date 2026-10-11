@@ -156,8 +156,18 @@ def save_learned_titles(path, learned_titles):
 
 
 def register_generated_environment(module_name, module_path):
+    module_path = Path(module_path)
+    try:
+        package_root_index = module_path.parts.index("gymnasium")
+    except ValueError as error:
+        raise RuntimeError(
+            f"Generated module must be inside the gymnasium package: {module_path}"
+        ) from error
+
+    module_package = ".".join(module_path.parts[package_root_index:-1])
+    module_import_path = f"{module_package}.{module_name}"
     importlib.invalidate_caches()
-    module = importlib.import_module(f"gymnasium.envs.classic_control.{module_name}")
+    module = importlib.import_module(module_import_path)
     environment_classes = [
         item
         for _, item in inspect.getmembers(module, inspect.isclass)
@@ -166,7 +176,7 @@ def register_generated_environment(module_name, module_path):
     if len(environment_classes) != 1:
         raise RuntimeError(f"Expected one generated Env class in {module_path}")
     env_id = f"Generated{module_name.title().replace('_', '')}-v0"
-    entry_point = f"gymnasium.envs.classic_control.{module_name}:{environment_classes[0].__name__}"
+    entry_point = f"{module_import_path}:{environment_classes[0].__name__}"
     register(
         id=env_id,
         entry_point=entry_point,
