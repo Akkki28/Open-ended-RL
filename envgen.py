@@ -195,6 +195,15 @@ MIN_COMPLETION_TOKENS = 3_000
 MAX_GENERATION_ATTEMPTS = 3
 
 
+def _is_environment_base(node):
+    """Recognize the direct Gymnasium environment bases used by this project."""
+    if isinstance(node, ast.Name):
+        return node.id in {"Env", "MujocoEnv"}
+    if isinstance(node, ast.Attribute):
+        return node.attr in {"Env", "MujocoEnv"}
+    return False
+
+
 def _estimate_token_count(*parts):
     """Conservatively estimate tokens without adding a tokenizer dependency."""
     return sum(len(part) for part in parts) // 3
@@ -331,14 +340,18 @@ replacement module and return the complete JSON response again:
                 node
                 for node in module_tree.body
                 if isinstance(node, ast.ClassDef)
-                and any(
-                    isinstance(base, ast.Attribute) and base.attr == "Env"
-                    for base in node.bases
-                )
+                and any(_is_environment_base(base) for base in node.bases)
             ]
             required_methods = {"reset", "step", "render", "close"}
             if not environment_classes:
-                raise RuntimeError("Groq returned code without a gymnasium.Env class")
+                raise RuntimeError(
+                    "Groq returned code without a direct gymnasium.Env or "
+                    "MujocoEnv subclass"
+                )
+            if len(environment_classes) != 1:
+                raise RuntimeError(
+                    "Groq returned multiple direct Gymnasium environment classes"
+                )
             method_names = {
                 node.name
                 for node in environment_classes[0].body
