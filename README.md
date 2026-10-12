@@ -1,6 +1,7 @@
 # Open-Ended Reinforcement Learning
 This project enables open-ended robotic learning by using reinforcement learning and a large language model to generate new environments from an initial base environment and learn new behaviours. Through iterative environment evolution, the robot discovers a diverse family of policies, each exhibiting distinct behaviors and skills.
 
+## Following are some example behaviours leanred by the HalfCheetah
 <img width="480" height="480" alt="saved-agent-GeneratedHalfcheetahvelocitytrackingenvRewardEncouragesMatchingARandomTaE0Da38Ea72-v0-episode-0-ezgif com-video-to-gif-converter (1)" src="https://github.com/user-attachments/assets/536bc69a-48e3-42aa-8df1-53e28a536229" />
 
 matching a random target velocity
