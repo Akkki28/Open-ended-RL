@@ -21,6 +21,15 @@ import torch
 from run_ddpg import register_saved_generated_environments
 
 
+def _render_kwargs(env_id: str) -> dict[str, Any]:
+    """Return rendering options for environments that need a moving camera."""
+    if "halfcheetah" in env_id.lower():
+        return {
+            "camera_name": "track",
+        }
+    return {}
+
+
 def _load_registry(runs_dir: Path) -> dict[str, dict[str, Any]]:
     registry_path = runs_dir / "generated_environments.json"
     try:
@@ -116,7 +125,7 @@ def record_environment(
     actor, actor_env = _build_actor(env_id, checkpoint_path, algorithm, device)
     env = None
     try:
-        env = gym.make(env_id, render_mode="rgb_array")
+        env = gym.make(env_id, render_mode="rgb_array", **_render_kwargs(env_id))
         env = gym.wrappers.RecordVideo(
             env,
             video_folder=str(video_folder),
