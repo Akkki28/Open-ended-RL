@@ -1,7 +1,8 @@
 # Open-Ended Reinforcement Learning
 
 
-https://github.com/user-attachments/assets/74106c7a-5589-4984-8382-ee3aeae059db
+<img width="480" height="480" alt="saved-agent-GeneratedHalfcheetahvelocitytrackingenvRewardEncouragesMatchingARandomTaE0Da38Ea72-v0-episode-0-ezgif com-video-to-gif-converter (1)" src="https://github.com/user-attachments/assets/536bc69a-48e3-42aa-8df1-53e28a536229" />
+
 matching a random target velocity
 
 https://github.com/user-attachments/assets/c5d4f593-a6c0-4321-9ce0-2fa2c559d562
